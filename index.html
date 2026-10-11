@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מפצל PDF חכם ✂</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #0f172a;
+            margin-bottom: 5px;
+        }
+
+        p {
+            color: #64748b;
+            margin-bottom: 30px;
+        }
+
+        /* המלבן המרכזי שעוטף את האתר */
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: right;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        select,
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        /* תיבת גרירת הקבצים */
+        .upload-box {
+            border: 2px dashed #94a3b8;
+            padding: 30px;
+            border-radius: 12px;
+            background: #f1f5f9;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-box:hover {
+            background: #e2e8f0;
+            border-color: #64748b;
+        }
+
+        /* כפתורים */
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 14px;
+            width: 100%;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        .btn-success {
+            background: #10b981;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        /* טבלת עריכה */
+        #editorSection {
+            display: none;
+            margin-top: 40px;
+            border-top: 2px solid #e2e8f0;
+            padding-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f8fafc;
+        }
+
+        #loading {
+            display: none;
+            color: #3b82f6;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>מפצל PDF חכם ✂</h1>
+        <p>מערכת אוטומטית לחלוקת קובצי PDF ומתן שמות</p>
+
+        <div class="form-group">
+            <label>בחר שיטת פיצול:</label>
+            <select id="method" onchange="toggleInputs()">
+                <option value="ocr">זיהוי וחלוקה חכמה (סריקה מהירה לפי מילת מפתח)</option>
+                <option value="excel">חלוקה קבועה לעמודים + שמות מקובץ אקסל</option>
+            </select>
+        </div>
+
+        <!-- הגדרות OCR -->
+        <div id="ocrSettings" class="form-group">
+            <label>מילת חיפוש (המילה שמופיעה מיד לפני השם):</label>
+            <input type="text" id="anchor" value="לכבוד">
+        </div>
+
+        <!-- הגדרות אקסל -->
+        <div id="excelSettings" class="form-group" style="display: none;">
+            <label>כל כמה עמודים לפצל?</label>
+            <input type="number" id="pages_per_split" value="1" min="1">
+            <label style="margin-top: 15px;">בחר קובץ אקסל (.xlsx / .csv):</label>
+            <input type="file" id="excelFile" accept=".xlsx, .csv" onchange="fetchExcelColumns()">
+
+            <!-- תיבת בחירת העמודה (מוסתרת עד שהקובץ עולה) -->
+            <div id="columnSelectDiv" style="display: none; margin-top: 15px;">
+                <label>בחר את העמודה שמכילה את שמות הקבצים:</label>
+                <select id="columnName"></select>
+            </div>
+        </div>
+
+        <div class="upload-box" onclick="document.getElementById('pdfFile').click()">
+            📁 <b>לחץ כאן כדי להעלות את ה-PDF לפיצול</b>
+            <input type="file" id="pdfFile" accept=".pdf" style="display: none;" onchange="updateFileName()">
+            <div id="pdfName" style="margin-top: 10px; color: #3b82f6;"></div>
+        </div>
+
+        <button onclick="analyzePDF()">🔍 נתח והכן נתונים</button>
+        <div id="loading">מעבד את הקובץ, אנא המתן (זה עשוי לקחת מעט זמן)... ⏳</div>
+
+        <!-- אזור טבלת העריכה וההורדה -->
+        <div id="editorSection">
+            <h3>📝 עריכה סופית לפני ייצוא</h3>
+            <p>ודא שהשמות נשלפו נכון ותקן ידנית במידת הצורך:</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>עמוד התחלה</th>
+                        <th>עמוד סיום</th>
+                        <th>שם הקובץ שישמר</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+            <button class="btn-success" onclick="generateZIP()">✂️ פצל והורד קבצים (ZIP)</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleInputs() {
+            const method = document.getElementById('method').value;
+            document.getElementById('ocrSettings').style.display = method === 'ocr' ? 'block' : 'none';
+            document.getElementById('excelSettings').style.display = method === 'excel' ? 'block' : 'none';
+        }
+
+        function updateFileName() {
+            const file = document.getElementById('pdfFile').files[0];
+            if (file) document.getElementById('pdfName').innerText = file.name;
+        }
+
+        // פונקציה למשיכת שמות העמודות מהאקסל
+        async function fetchExcelColumns() {
+            const excelFile = document.getElementById('excelFile').files[0];
+            if (!excelFile) return;
+
+            const formData = new FormData();
+            formData.append("excel_file", excelFile);
+
+            try {
+                const response = await fetch('http://localhost:8000/get-columns/', { method: 'POST', body: formData });
+                if (response.ok) {
+                    const result = await response.json();
+                    const columnSelect = document.getElementById('columnName');
+                    columnSelect.innerHTML = "";
+
+                    result.columns.forEach(col => {
+                        columnSelect.innerHTML += `<option value="${col}">${col}</option>`;
+                    });
+
+                    document.getElementById('columnSelectDiv').style.display = 'block';
+                }
+            } catch (error) {
+                alert("שגיאה בקריאת קובץ האקסל.");
+            }
+        }
+
+        // פונקציה 1: שליחה לשרת לזיהוי והכנת הטבלה
+        async function analyzePDF() {
+            const pdfFile = document.getElementById('pdfFile').files[0];
+            if (!pdfFile) { alert("חובה להעלות קובץ PDF תחילה."); return; }
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('editorSection').style.display = 'none';
+
+            const formData = new FormData();
+            formData.append("file", pdfFile);
+            formData.append("method", document.getElementById('method').value);
+            formData.append("anchor", document.getElementById('anchor').value);
+            formData.append("pages_per_split", document.getElementById('pages_per_split').value);
+
+            const excelFile = document.getElementById('excelFile').files[0];
+            if (excelFile) {
+                formData.append("excel_file", excelFile);
+                formData.append("column_name", document.getElementById('columnName').value);
+            }
+
+            try {
+                const response = await fetch('http://localhost:8000/analyze/', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = "";
+                result.data.forEach((row, idx) => {
+                    tbody.innerHTML += `
+                    <tr>
+                        <td><input type="number" id="start_${idx}" value="${row.start}"></td>
+                        <td><input type="number" id="end_${idx}" value="${row.end}"></td>
+                        <td><input type="text" id="name_${idx}" value="${row.name}"></td>
+                    </tr>
+                `;
+                });
+
+                document.getElementById('editorSection').style.display = 'block';
+            } catch (error) {
+                alert("שגיאה בחיבור לשרת!");
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // פונקציה 2: איסוף הנתונים מהטבלה, שליחה לשרת והורדת ה-ZIP
+        async function generateZIP() {
+            const pdfFile = document.getElementById('pdfFile').files[0];
+            const rows = document.getElementById('tableBody').children;
+            const finalData = [];
+
+            for (let i = 0; i < rows.length; i++) {
+                finalData.push({
+                    start: document.getElementById(`start_${i}`).value,
+                    end: document.getElementById(`end_${i}`).value,
+                    name: document.getElementById(`name_${i}`).value
+                });
+            }
+
+            document.getElementById('loading').innerText = "אורז את ה-ZIP, אנא המתן... 📦";
+            document.getElementById('loading').style.display = 'block';
+
+            const formData = new FormData();
+            formData.append("file", pdfFile);
+            formData.append("mapping", JSON.stringify(finalData));
+
+            try {
+                const response = await fetch('http://localhost:8000/generate/', { method: 'POST', body: formData });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "split_documents.zip";
+                    a.click();
+                } else {
+                    alert("אירעה שגיאה ביצירת הקבצים.");
+                }
+            } catch (error) {
+                alert("שגיאה בחיבור לשרת!");
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('loading').innerText = "מעבד את הקובץ, אנא המתן (זה עשוי לקחת מעט זמן)... ⏳";
+            }
+        }
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+PyMuPDF
+PyPDF2
+pandas
+openpyxl
+pytesseract
+Pillow
