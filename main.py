@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import fitz  # PyMuPDF
@@ -14,6 +15,14 @@ import os
 import json
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # הרשאה לאתר ה-HTML שלנו לתקשר עם השרת
 app.add_middleware(
